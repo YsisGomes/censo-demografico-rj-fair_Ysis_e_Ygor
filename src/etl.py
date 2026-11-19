@@ -13,7 +13,6 @@ from typing import Dict, Any, Optional
 import pandas as pd
 import numpy as np
 
-# Configuração de logging
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s [%(levelname)s] %(message)s",
@@ -21,10 +20,8 @@ logging.basicConfig(
 )
 logger = logging.getLogger("ETL_CENSO2022_RJ")
 
-# Salário mínimo de referência do Censo 2022 (vigente em 2022: R$ 1.212,00)
 SALARIO_MINIMO_2022 = 1212.0
 
-# Dicionários de mapeamento categórico oficial do IBGE (Microdados CD2022)
 MAP_SITUACAO = {1: "Urbana", 2: "Rural"}
 
 MAP_SEXO = {1: "Masculino", 2: "Feminino", 9: "Ignorado"}
@@ -164,8 +161,7 @@ def processar_domicilios(input_path: str, output_parquet: str, output_csv_gz: st
     
     df = pd.read_csv(input_path, sep=';', usecols=usecols, low_memory=False)
     logger.info(f"Registros brutos lidos (Domicílios): {len(df):,}")
-    
-    # Renomeação semântica padronizada
+
     rename_dict = {
         'D0100': 'id_domicilio',
         'D0110': 'peso_amostral',
@@ -191,43 +187,33 @@ def processar_domicilios(input_path: str, output_parquet: str, output_csv_gz: st
         'D0380': 'total_mulheres'
     }
     df = df.rename(columns=rename_dict)
-    
-    # Conversões e Tipagens
+
     df['id_domicilio'] = df['id_domicilio'].astype(np.int64)
     df['peso_amostral'] = pd.to_numeric(df['peso_amostral'], errors='coerce').fillna(1.0)
-    
-    # Decodificação e mapeamento categórico
+
     df['situacao_domicilio'] = df['cod_situacao_domicilio'].map(MAP_SITUACAO).astype('category')
     df['esgotamento_descricao'] = df['cod_esgotamento_sanitario'].map(MAP_ESGOTAMENTO).fillna("Não informado")
     df['abastecimento_agua_descricao'] = df['cod_abastecimento_agua'].map(MAP_ABASTECIMENTO_AGUA).fillna("Não informado")
     df['destino_lixo_descricao'] = df['cod_destino_lixo'].map(MAP_DESTINO_LIXO).fillna("Não informado")
     df['acesso_internet_descricao'] = df['cod_acesso_internet'].map({1: "Com Acesso", 2: "Sem Acesso"}).fillna("Não informado")
     df['obito_recente_descricao'] = df['ocorrencia_obito_domicilio'].map({1: "Com Óbito (2019-2022)", 2: "Sem Óbito"}).fillna("Não informado")
-    
-    # Indicadores Derivados de Negócio / Pesquisa (RQ1)
-    # Esgotamento adequado: Rede geral ou fossa séptica/filtro ligada à rede (Conceito IBGE/PNSB)
+
     df['esgotamento_adequado'] = df['cod_esgotamento_sanitario'].isin([1, 2])
-    
-    # Abastecimento adequado: Rede geral de distribuição
+
     df['agua_rede_geral'] = df['cod_abastecimento_agua'] == 1
-    
-    # Destino do lixo adequado: Coletado no domicílio ou caçamba
+
     df['lixo_coletado_adequado'] = df['cod_destino_lixo'].isin([1, 2])
-    
-    # Conectividade digital
+
     df['possui_internet'] = df['cod_acesso_internet'] == 1
-    
-    # Saneamento Básico Pleno (Água por rede + Esgoto adequado + Lixo coletado)
+
     df['saneamento_basico_pleno'] = (
         df['esgotamento_adequado'] & 
         df['agua_rede_geral'] & 
         df['lixo_coletado_adequado']
     )
-    
-    # Classificação de Renda
+
     df['faixa_renda_sm'] = df['rendimento_domiciliar_per_capita'].apply(classificar_faixa_renda)
-    
-    # Exportação em formato aberto otimizado (Parquet) e CSV comprimido
+
     logger.info(f"Salvando Domicílios tratados em: {output_parquet}")
     df.to_parquet(output_parquet, index=False, engine='pyarrow', compression='snappy')
     
@@ -273,15 +259,13 @@ def processar_familias(input_path: str, output_parquet: str, output_csv_gz: str)
     
     df['id_domicilio'] = df['id_domicilio'].astype(np.int64)
     df['peso_amostral'] = pd.to_numeric(df['peso_amostral'], errors='coerce').fillna(1.0)
-    
-    # Decodificação
+
     df['situacao_domicilio'] = df['cod_situacao_domicilio'].map(MAP_SITUACAO).astype('category')
     df['sexo_responsavel'] = df['cod_sexo_responsavel'].map(MAP_SEXO).fillna("Não aplicável / Família secundária")
     df['raca_responsavel'] = df['cod_raca_responsavel'].map(MAP_RACA).fillna("Não informado")
     df['instrucao_responsavel'] = df['cod_instrucao_responsavel'].map(MAP_INSTRUCAO).fillna("Não informado")
     df['tipologia_familiar'] = df['cod_tipologia_familiar'].map(MAP_TIPOLOGIA_FAMILIA).fillna("Outra tipologia")
-    
-    # Métricas derivadas (RQ2)
+
     df['is_chefiada_por_mulher'] = df['cod_sexo_responsavel'] == 2
     df['is_monoparental_feminina'] = df['cod_tipologia_familiar'].isin([5, 6])
     df['faixa_renda_sm'] = df['rendimento_familiar_per_capita'].apply(classificar_faixa_renda)
@@ -320,19 +304,16 @@ def processar_mortalidade(input_path: str, output_parquet: str, output_csv_gz: s
     
     df['id_domicilio'] = df['id_domicilio'].astype(np.int64)
     df['peso_amostral'] = pd.to_numeric(df['peso_amostral'], errors='coerce').fillna(1.0)
-    
-    # Mapeamento do ano de óbito
+
     df['ano_obito'] = df['cod_ano_obito'].map(MAP_ANO_OBITO)
     df = df[df['ano_obito'].notna()].copy()
     df['ano_obito'] = df['ano_obito'].astype(int)
-    
-    # Decodificação
+
     df['situacao_domicilio'] = df['cod_situacao_domicilio'].map(MAP_SITUACAO).astype('category')
     df['sexo_falecido'] = df['cod_sexo_falecido'].map(MAP_SEXO).fillna("Ignorado")
     df['faixa_etaria_falecido'] = df['cod_faixa_etaria_falecido'].map(MAP_FAIXA_ETARIA).fillna("Ignorado")
     df['grupo_etario_falecido'] = df['cod_faixa_etaria_falecido'].apply(categorizar_grupo_etario)
-    
-    # Flag do período crítico pandêmico
+
     df['periodo_pandemico'] = df['ano_obito'].isin([2020, 2021])
     
     logger.info(f"Salvando Mortalidade tratada em: {output_parquet}")
@@ -406,8 +387,7 @@ def gerar_indicadores_integrados(
     infraestrutura residencial com óbitos domiciliares e tipologia familiar.
     """
     logger.info("Executando linkage relacional entre Domicílios, Mortalidade e Famílias...")
-    
-    # Agregação de óbitos por domicílio
+
     obitos_por_dom = df_mort.groupby('id_domicilio').agg(
         total_obitos=('id_ordem_falecido', 'count'),
         teve_obito_2021=('ano_obito', lambda s: (s == 2021).any()),
@@ -415,8 +395,7 @@ def gerar_indicadores_integrados(
         obitos_mulheres=('cod_sexo_falecido', lambda s: (s == 2).sum()),
         obitos_idosos=('grupo_etario_falecido', lambda s: (s == "Idosos (60 anos ou mais)").sum())
     ).reset_index()
-    
-    # Merge com Domicílios
+
     df_integrado = df_dom.merge(obitos_por_dom, on='id_domicilio', how='left')
     df_integrado['total_obitos'] = df_integrado['total_obitos'].fillna(0).astype(int)
     df_integrado['teve_obito_2021'] = df_integrado['teve_obito_2021'].fillna(False).astype(bool)
@@ -438,14 +417,12 @@ def main():
     raw_dir = args.raw_dir
     out_dir = args.out_dir
     os.makedirs(out_dir, exist_ok=True)
-    
-    # Caminhos de entrada
+
     path_dom = os.path.join(raw_dir, "Domicilios_33_publico.csv")
     path_fam = os.path.join(raw_dir, "Familia_33_publico.csv")
     path_mort = os.path.join(raw_dir, "Mortalidade_33_publico.csv")
     path_pess = os.path.join(raw_dir, "Pessoas_33_publico.csv")
-    
-    # Processamento sequencial auditável
+
     df_dom = processar_domicilios(
         path_dom, 
         os.path.join(out_dir, "domicilios_rj_clean.parquet"),
