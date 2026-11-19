@@ -36,6 +36,12 @@ def carregar_dados():
     df_dom = pd.read_parquet(os.path.join(PROCESSED_DIR, "domicilios_rj_clean.parquet"))
     df_fam = pd.read_parquet(os.path.join(PROCESSED_DIR, "familias_rj_clean.parquet"))
     df_mort = pd.read_parquet(os.path.join(PROCESSED_DIR, "mortalidade_rj_clean.parquet"))
+    
+    # Auto-recuperação defensiva de colunas
+    for df in [df_dom, df_fam, df_mort]:
+        if "situacao_domicilio" not in df.columns and "cod_situacao_domicilio" in df.columns:
+            df["situacao_domicilio"] = df["cod_situacao_domicilio"].map({1: "Urbana", 2: "Rural"}).fillna("Urbana").astype(str)
+            
     return df_dom, df_fam, df_mort
 
 try:
