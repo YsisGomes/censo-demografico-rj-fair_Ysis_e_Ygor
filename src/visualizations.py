@@ -11,7 +11,6 @@ import plotly.graph_objects as go
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-# Configuração visual do matplotlib/seaborn
 plt.style.use('seaborn-v0_8-whitegrid' if 'seaborn-v0_8-whitegrid' in plt.style.available else 'default')
 plt.rcParams['font.sans-serif'] = 'DejaVu Sans'
 plt.rcParams['axes.edgecolor'] = '#cccccc'
@@ -28,8 +27,7 @@ def gerar_graficos_rq1(df_dom: pd.DataFrame):
     RQ1: Saneamento básico e conectividade digital (Urbano vs Rural e Renda).
     """
     print("[1/3] Gerando visualizações para RQ1 (Infraestrutura e Saneamento)...")
-    
-    # 1. Gráfico Estático: Comparativo Urbano vs Rural em Saneamento e Conectividade
+
     taxa_rural_esgoto = (df_dom[df_dom['situacao_domicilio'] == 'Rural']['esgotamento_adequado'].mean()) * 100
     taxa_urbana_esgoto = (df_dom[df_dom['situacao_domicilio'] == 'Urbana']['esgotamento_adequado'].mean()) * 100
     
@@ -70,8 +68,7 @@ def gerar_graficos_rq1(df_dom: pd.DataFrame):
     static_path = os.path.join(ASSETS_DIR, "figura1_saneamento_rq1.png")
     fig.savefig(static_path, dpi=300)
     plt.close()
-    
-    # 2. Gráfico Interativo Plotly: Saneamento Pleno por Faixa de Renda Domiciliar
+
     ordem_renda = [
         "Renda zero",
         "Extrema pobreza (Até 1/4 SM)",
@@ -128,8 +125,7 @@ def gerar_graficos_rq2(df_fam: pd.DataFrame):
     RQ2: Disparidades de renda por gênero, raça e tipologia familiar.
     """
     print("[2/3] Gerando visualizações para RQ2 (Desigualdades na Chefia Familiar)...")
-    
-    # 1. Gráfico Estático: Mediana da Renda per Capita por Gênero e Raça do Responsável
+
     df_valid = df_fam[
         df_fam['sexo_responsavel'].isin(['Masculino', 'Feminino']) &
         df_fam['raca_responsavel'].isin(['Branca', 'Preta', 'Parda']) &
@@ -146,8 +142,7 @@ def gerar_graficos_rq2(df_fam: pd.DataFrame):
     ax.set_xlabel('Cor ou Raça do Responsável', fontsize=10, fontweight='bold')
     ax.set_xticklabels(medians.index, rotation=0, fontsize=10)
     ax.legend(['Chefe Masculino', 'Chefe Feminino'], frameon=True)
-    
-    # Linha do salário mínimo de 2022
+
     ax.axhline(1212.0, color='red', linestyle='--', linewidth=1, label='1 Salário Mínimo (2022: R$ 1.212)')
     
     for p in ax.patches:
@@ -162,8 +157,7 @@ def gerar_graficos_rq2(df_fam: pd.DataFrame):
     static_path = os.path.join(ASSETS_DIR, "figura2_renda_familia_rq2.png")
     fig.savefig(static_path, dpi=300)
     plt.close()
-    
-    # 2. Gráfico Interativo Plotly: Renda Mediana por Tipologia Familiar
+
     df_tip = df_fam[df_fam['rendimento_familiar_per_capita'] >= 0].copy()
     top_tipologias = [
         "Casal sem filhos",
@@ -207,8 +201,7 @@ def gerar_graficos_rq3(df_mort: pd.DataFrame):
     RQ3: Dinâmica temporal e demográfica da mortalidade (2019-2022).
     """
     print("[3/3] Gerando visualizações para RQ3 (Dinâmica da Mortalidade)...")
-    
-    # 1. Gráfico Estático: Série Temporal de Óbitos por Ano e Sexo
+
     df_valid = df_mort[df_mort['sexo_falecido'].isin(['Masculino', 'Feminino'])].copy()
     obitos_ano_sexo = df_valid.groupby(['ano_obito', 'sexo_falecido']).size().unstack()
     
@@ -233,8 +226,7 @@ def gerar_graficos_rq3(df_mort: pd.DataFrame):
     static_path = os.path.join(ASSETS_DIR, "figura3_mortalidade_rq3.png")
     fig.savefig(static_path, dpi=300)
     plt.close()
-    
-    # 2. Gráfico Interativo Plotly: Pirâmide / Distribuição Etária dos Óbitos em 2021 (Pico) vs 2019
+
     df_comp = df_mort[df_mort['ano_obito'].isin([2019, 2021]) & (df_mort['faixa_etaria_falecido'] != 'Idade ignorada')].copy()
     comp_etaria = df_comp.groupby(['faixa_etaria_falecido', 'ano_obito']).size().unstack().fillna(0).reset_index()
     
