@@ -5,7 +5,6 @@ import seaborn as sns
 import numpy as np
 import os
 
-# Configuração da página
 st.set_page_config(
     page_title="Censo 2022 RJ — Análise e Indicadores",
     layout="wide"
@@ -27,7 +26,6 @@ st.markdown("""
 
 st.divider()
 
-# Carregamento de dados com cache
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 PROCESSED_DIR = os.path.join(BASE_DIR, "data", "processed")
 
@@ -36,8 +34,7 @@ def carregar_dados():
     df_dom = pd.read_parquet(os.path.join(PROCESSED_DIR, "domicilios_rj_clean.parquet"))
     df_fam = pd.read_parquet(os.path.join(PROCESSED_DIR, "familias_rj_clean.parquet"))
     df_mort = pd.read_parquet(os.path.join(PROCESSED_DIR, "mortalidade_rj_clean.parquet"))
-    
-    # Auto-recuperação defensiva de colunas
+
     for df in [df_dom, df_fam, df_mort]:
         if "situacao_domicilio" not in df.columns and "cod_situacao_domicilio" in df.columns:
             df["situacao_domicilio"] = df["cod_situacao_domicilio"].map({1: "Urbana", 2: "Rural"}).fillna("Urbana").astype(str)
@@ -50,7 +47,6 @@ except Exception as e:
     st.error(f"Erro ao carregar arquivos da pasta {PROCESSED_DIR}: {e}")
     st.stop()
 
-# Barra Lateral - Filtros
 st.sidebar.header("Filtros")
 
 situacoes = sorted(list(df_dom["situacao_domicilio"].dropna().unique()))
@@ -95,7 +91,6 @@ anos_selecionados = st.sidebar.multiselect(
     default=anos_obito
 )
 
-# Aplicação dos Filtros
 df_dom_filtrado = df_dom[
     (df_dom["situacao_domicilio"].isin(situacoes_selecionadas)) &
     (df_dom["faixa_renda_sm"].isin(faixas_selecionadas))
@@ -113,7 +108,6 @@ df_mort_filtrado = df_mort[
     (df_mort["ano_obito"].isin(anos_selecionados))
 ]
 
-# Indicadores Principais (Grid 3x2 igual ao G1)
 st.subheader("Indicadores principais")
 
 if not df_dom_filtrado.empty:
@@ -163,14 +157,12 @@ else:
 
 st.divider()
 
-# Seção de Gráficos (Estilo Seaborn/Matplotlib igual ao G1)
 st.subheader("Análise dos indicadores")
 
 if not df_dom_filtrado.empty:
-    # Linha 1 de Gráficos (col_grafico1 e col_grafico2)
+
     col_grafico1, col_grafico2 = st.columns(2)
 
-    # Gráfico 1: Cobertura por Situação (Urbano vs Rural)
     resumo_situacao = df_dom.groupby("situacao_domicilio", observed=False).agg(
         Esgoto_Adequado=("esgotamento_adequado", lambda s: s.mean() * 100),
         Agua_Canalizada=("agua_rede_geral", lambda s: s.mean() * 100),
@@ -206,7 +198,6 @@ if not df_dom_filtrado.empty:
     col_grafico1.pyplot(fig1)
     plt.close(fig1)
 
-    # Gráfico 2: Renda Mediana por Raça e Sexo do Responsável
     if not df_fam_filtrado.empty:
         df_raca_sexo = df_fam_filtrado.groupby(["raca_responsavel", "sexo_responsavel"]).agg(
             renda_mediana=("rendimento_familiar_per_capita", "median")
@@ -237,10 +228,8 @@ if not df_dom_filtrado.empty:
     else:
         col_grafico2.info("Sem dados familiares para os filtros selecionados.")
 
-    # Linha 2 de Gráficos (col_grafico3 e col_grafico4)
     col_grafico3, col_grafico4 = st.columns(2)
 
-    # Gráfico 3: Renda por Tipologia Familiar
     if not df_fam_filtrado.empty:
         top_tipologias = [
             "Casal sem filhos",
@@ -273,7 +262,6 @@ if not df_dom_filtrado.empty:
     else:
         col_grafico3.info("Sem dados para tipologias familiares.")
 
-    # Gráfico 4: Evolução Anual de Óbitos Domiciliares (COVID-19)
     if not df_mort_filtrado.empty:
         obitos_anuais = df_mort_filtrado.groupby(["ano_obito", "sexo_falecido"]).size().reset_index(name="obitos")
         obitos_anuais = obitos_anuais[obitos_anuais["sexo_falecido"].isin(["Masculino", "Feminino"])]
@@ -301,7 +289,6 @@ if not df_dom_filtrado.empty:
     else:
         col_grafico4.info("Sem registros de óbito para o recorte atual.")
 
-    # Seção Sazonalidade / Pirâmide Etária dos Óbitos (Heatmap e Distribuição)
     st.subheader("Dinâmica Etária da Mortalidade")
 
     if not df_mort_filtrado.empty:
@@ -323,7 +310,6 @@ if not df_dom_filtrado.empty:
         st.pyplot(fig5)
         plt.close(fig5)
 
-    # Interpretação dos Resultados (Estilo dinâmico igual ao G1)
     st.subheader("Interpretação dos Resultados")
 
     esgoto_urbano = df_dom[df_dom["situacao_domicilio"] == "Urbana"]["esgotamento_adequado"].mean() * 100
