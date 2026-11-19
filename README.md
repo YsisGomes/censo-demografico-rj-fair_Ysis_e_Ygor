@@ -11,7 +11,7 @@
 **Curso:** Bacharelado em Sistemas de Informação — 6º Período  
 **Disciplina:** Linguagem de Programação (Análise e Visualização de Dados com Python)  
 **Natureza:** Projeto Final Teórico-Prático de Conclusão de Disciplina  
-**Artigo Acadêmico Publicado:** [Acesse a publicação em docs/index.html](docs/index.html) (ou via GitHub Pages)  
+**Artigo Acadêmico Publicado:** [Acesse a publicação em docs/index.html](index.html) (ou via GitHub Pages)  
 
 ---
 
